@@ -13,99 +13,32 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Media.Media3D;
+using Microsoft.Win32;
+using HelixToolkit.Wpf;
 
 namespace Deformation {
 
     public partial class MainWindow : Window {
-        //private GeometryModel3D mGeometry;
-        
+
         public MainWindow() {
             InitializeComponent();
-			//BuildSolid();
-		}
+        }
 
-		/*private void BuildSolid() {
-			// Define 3D mesh object
-			MeshGeometry3D mesh = new MeshGeometry3D();
+        private void Load_Click(object sender, RoutedEventArgs e) {
+            OpenFileDialog dialog = new OpenFileDialog();
+            dialog.DefaultExt = ".obj";
+            dialog.Filter = "Wavefront file (*.obj)|*.obj|Lightwave file (*.lwo)|*.lwo|Object File Format file (*.off)|*.off|StereoLithography file (*.stl)|*.stl|3D Studio file (*.3ds)|*.3ds";
 
-			mesh.Positions.Add(new Point3D(-0.5, -0.5, 1));
-			//mesh.Normals.Add(new Vector3D(0, 0, 1));
-			mesh.Positions.Add(new Point3D(0.5, -0.5, 1));
-			//mesh.Normals.Add(new Vector3D(0, 0, 1));
-			mesh.Positions.Add(new Point3D(0.5, 0.5, 1));
-			//mesh.Normals.Add(new Vector3D(0, 0, 1));
-			mesh.Positions.Add(new Point3D(-0.5, 0.5, 1));
-			//mesh.Normals.Add(new Vector3D(0, 0, 1));
-
-			mesh.Positions.Add(new Point3D(-1, -1, -1));
-			//mesh.Normals.Add(new Vector3D(0, 0, -1));
-			mesh.Positions.Add(new Point3D(1, -1, -1));
-			//mesh.Normals.Add(new Vector3D(0, 0, -1));
-			mesh.Positions.Add(new Point3D(1, 1, -1));
-			//mesh.Normals.Add(new Vector3D(0, 0, -1));
-			mesh.Positions.Add(new Point3D(-1, 1, -1));
-			//mesh.Normals.Add(new Vector3D(0, 0, -1));
-
-			// Front face
-			mesh.TriangleIndices.Add(0);
-			mesh.TriangleIndices.Add(1);
-			mesh.TriangleIndices.Add(2);
-			mesh.TriangleIndices.Add(2);
-			mesh.TriangleIndices.Add(3);
-			mesh.TriangleIndices.Add(0);
-
-			// Back face
-			mesh.TriangleIndices.Add(6);
-			mesh.TriangleIndices.Add(5);
-			mesh.TriangleIndices.Add(4);
-			mesh.TriangleIndices.Add(4);
-			mesh.TriangleIndices.Add(7);
-			mesh.TriangleIndices.Add(6);
-
-			// Right face
-			mesh.TriangleIndices.Add(1);
-			mesh.TriangleIndices.Add(5);
-			mesh.TriangleIndices.Add(2);
-			mesh.TriangleIndices.Add(5);
-			mesh.TriangleIndices.Add(6);
-			mesh.TriangleIndices.Add(2);
-
-			// Top face
-			mesh.TriangleIndices.Add(2);
-			mesh.TriangleIndices.Add(6);
-			mesh.TriangleIndices.Add(3);
-			mesh.TriangleIndices.Add(3);
-			mesh.TriangleIndices.Add(6);
-			mesh.TriangleIndices.Add(7);
-
-			// Bottom face
-			mesh.TriangleIndices.Add(5);
-			mesh.TriangleIndices.Add(1);
-			mesh.TriangleIndices.Add(0);
-			mesh.TriangleIndices.Add(0);
-			mesh.TriangleIndices.Add(4);
-			mesh.TriangleIndices.Add(5);
-
-			// Right face
-			mesh.TriangleIndices.Add(4);
-			mesh.TriangleIndices.Add(0);
-			mesh.TriangleIndices.Add(3);
-			mesh.TriangleIndices.Add(3);
-			mesh.TriangleIndices.Add(7);
-			mesh.TriangleIndices.Add(4);
-
-			// Geometry creation
-			mGeometry = new GeometryModel3D(mesh, new DiffuseMaterial(Brushes.YellowGreen));
-			mGeometry.Transform = new Transform3DGroup();
-			group.Children.Add(mGeometry);
-		}*/
-
-        private void Button_Click(object sender, RoutedEventArgs e) {
-            for (int i = 0; i < mesh.Positions.Count; i++) {
-                var point = mesh.Positions[i];
-                point.X *= 2;
-                mesh.Positions[i] = point;
+            if (dialog.ShowDialog() == true) {
+                Model3D model = (new ModelImporter()).Load(dialog.FileName);
+                ModelVisual3D visual = new ModelVisual3D();
+                visual.Content = model;
+                container.Children[0] = visual;
             }
+        }
+
+        private void Deform_Click(object sender, RoutedEventArgs e) {
+
         }
     }
 }
