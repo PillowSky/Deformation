@@ -44,7 +44,7 @@ namespace Deformation {
                     for (int z = 0; z <= zDim; z++) {
                         double zValue = rect.Z + rect.SizeZ * z / zDim;
                         PointsVisual3D p = new PointsVisual3D();
-                        p.Size = 5;
+                        p.Size = 8;
                         p.Points.Add(new Point3D(xValue, yValue, zValue));
                         p.SetName("ControlPoint");
                         ControlPoints.Children.Add(p);
@@ -138,13 +138,27 @@ namespace Deformation {
 
             Rect3D bound = Model.Children.FindBounds();
             for (int i = 0; i < mesh.Positions.Count; i++) {
+
                 Vector3D diff = mesh.Positions[i] - bound.Location;
                 Point3D normalize = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
                 coords[i] = normalize;
+
                 maps[i] = new int[64];
                 double xId = normalize.X / 0.25;
                 double yId = normalize.Y / 0.25;
                 double zId = normalize.Z / 0.25;
+
+                int xOffset = clamp2(0, xId);
+                int yOffset = clamp2(0, yId);
+                int zOffset = clamp2(0, zId);
+                Point3D bow = new Point3D(bound.Location.X - xOffset * 0.25, bound.Location.Y - yOffset * 0.25, bound.Location.Z - zOffset * 0.25);
+                diff = mesh.Positions[i] - bow;
+                normalize = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
+                //coords[i] = normalize;
+
+                xId = normalize.X / 0.25;
+                yId = normalize.Y / 0.25;
+                zId = normalize.Z / 0.25;
 
                 int id = 0;
                 for (int x = 0; x < 4; x++) {
@@ -189,10 +203,30 @@ namespace Deformation {
             
         }
 
+        private int clamp2(int pos, double value) {
+            double result = 0;
+            switch (pos) {
+                case 0:
+                    result = Math.Floor(value) - 1;
+                    break;
+                case 1:
+                    result = Math.Floor(value);
+                    break;
+                case 2:
+                    result = Math.Ceiling(value);
+                    break;
+                case 3:
+                    result = Math.Ceiling(value) + 1;
+                    break;
+            }
+
+            return (int)result;
+        }
+
         private void UpdateDeformation() {
             for (int i = 0; i < mesh.Positions.Count; i++) {
                 Point3D coord = coords[i];
-                int[] map = maps[i];
+                //int[] map = maps[i];
                 Point3D pos = new Point3D();
                 Point3D[] controls = ControlPoints.Children.Select(v => (v as PointsVisual3D).Points[0]).ToArray();
 
@@ -201,7 +235,7 @@ namespace Deformation {
                     for (int y = 0; y < 4; y++) {
                         for (int z = 0; z < 4; z++) {
                             double scale = getBoean(x, coord.X) * getBoean(y, coord.Y) * getBoean(z, coord.Z);
-                            Point3D p = controls[map[id++]];
+                            Point3D p = controls[id++];
                             pos += new Vector3D(p.X * scale, p.Y * scale, p.Z * scale);
                         }
                     }
