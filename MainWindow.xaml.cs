@@ -18,16 +18,83 @@ using HelixToolkit.Wpf;
 using _3DTools;
 
 namespace Deformation {
+    public enum DisplayMode {
+        Control,
+        Point,
+        Model
+    }
+
+    public enum SurfaceMode {
+        Plan,
+        Subdivide
+    }
+
+    public enum TimeMode {
+        Linear,
+        Easein,
+        Easeout
+    }
+
     public partial class MainWindow : Window {
+        public DependencyProperty DisplayStatProperty = DependencyProperty.Register("DisplayStat", typeof(DisplayMode), typeof(MainWindow), new FrameworkPropertyMetadata(DisplayMode.Control));
+        public DependencyProperty SurfaceStatProperty = DependencyProperty.Register("SurfaceStat", typeof(SurfaceMode), typeof(MainWindow), new FrameworkPropertyMetadata(SurfaceMode.Plan));
+        public DependencyProperty XDivisionProperty = DependencyProperty.Register("XDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4));
+        public DependencyProperty YDivisionProperty = DependencyProperty.Register("YDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4));
+        public DependencyProperty ZDivisionProperty = DependencyProperty.Register("ZDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4));
+        public DependencyProperty TimeStatProperty = DependencyProperty.Register("TimeStat", typeof(TimeMode), typeof(MainWindow), new FrameworkPropertyMetadata(TimeMode.Linear));
+        public DependencyProperty DurationProperty = DependencyProperty.Register("Duration", typeof(double), typeof(MainWindow), new FrameworkPropertyMetadata(1.0));
+        public DependencyProperty ElapsedProperty = DependencyProperty.Register("Elapsed", typeof(double), typeof(MainWindow), new FrameworkPropertyMetadata(0.0));
+
+        public DisplayMode DisplayStat {
+            get { return (DisplayMode)GetValue(DisplayStatProperty); }
+            set { SetValue(DisplayStatProperty, value); }
+        }
+
+        public SurfaceMode SurfaceStat {
+            get { return (SurfaceMode)GetValue(SurfaceStatProperty); }
+            set { SetValue(SurfaceStatProperty, value); }
+        }
+
+        public int XDivision {
+            get { return (int)GetValue(XDivisionProperty); }
+            set { SetValue(XDivisionProperty, value); }
+        }
+
+        public int YDivision {
+            get { return (int)GetValue(YDivisionProperty); }
+            set { SetValue(YDivisionProperty, value); }
+        }
+
+        public int ZDivision {
+            get { return (int)GetValue(ZDivisionProperty); }
+            set { SetValue(ZDivisionProperty, value); }
+        }
+
+        public TimeMode TimeStat {
+            get { return (TimeMode)GetValue(TimeStatProperty); }
+            set { SetValue(TimeStatProperty, value); }
+        }
+
+        public double Duration {
+            get { return (double)GetValue(DurationProperty); }
+            set { SetValue(DurationProperty, value); }
+        }
+
+        public double Elapsed {
+            get { return (double)GetValue(ElapsedProperty); }
+            set { SetValue(ElapsedProperty, value); }
+        }
+
         private MeshGeometry3D mesh;
         private Point3D[] coords;
-        private int[][] maps;
         private int xDim = 3;
         private int yDim = 3;
         private int zDim = 3;
 
         public MainWindow() {
             InitializeComponent();
+            DataContext = this;
+
             UpdateControlPoint();
             BindMouseToControlPoint();
             InitializeDeformation();
@@ -108,7 +175,7 @@ namespace Deformation {
             return translationVector3D;
         }
 
-        private void Load_Click(object sender, RoutedEventArgs e) {
+        private void Open_Click(object sender, RoutedEventArgs e) {
             OpenFileDialog dialog = new OpenFileDialog();
             dialog.DefaultExt = ".obj";
             dialog.Filter = "Wavefront file (*.obj)|*.obj|Lightwave file (*.lwo)|*.lwo|Object File Format file (*.off)|*.off|StereoLithography file (*.stl)|*.stl|3D Studio file (*.3ds)|*.3ds";
@@ -123,104 +190,38 @@ namespace Deformation {
             }
         }
 
-        private void Deform_Click(object sender, RoutedEventArgs e) {
-            for (int i = 0; i < mesh.Positions.Count; i++) {
-                var point = mesh.Positions[i];
-                point.X *= 1.1;
-                mesh.Positions[i] = point;
-            }
+        private void Save_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Play_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Render_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Reset_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Help_Click(object sender, RoutedEventArgs e) {
+
         }
 
         private void InitializeDeformation() {
             mesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
             coords = new Point3D[mesh.Positions.Count];
-            maps = new int[mesh.Positions.Count][];
 
             Rect3D bound = Model.Children.FindBounds();
             for (int i = 0; i < mesh.Positions.Count; i++) {
-
                 Vector3D diff = mesh.Positions[i] - bound.Location;
                 Point3D normalize = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
                 coords[i] = normalize;
-
-                maps[i] = new int[64];
-                double xId = normalize.X / 0.25;
-                double yId = normalize.Y / 0.25;
-                double zId = normalize.Z / 0.25;
-
-                int xOffset = clamp2(0, xId);
-                int yOffset = clamp2(0, yId);
-                int zOffset = clamp2(0, zId);
-                Point3D bow = new Point3D(bound.Location.X - xOffset * 0.25, bound.Location.Y - yOffset * 0.25, bound.Location.Z - zOffset * 0.25);
-                diff = mesh.Positions[i] - bow;
-                normalize = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
-                //coords[i] = normalize;
-
-                xId = normalize.X / 0.25;
-                yId = normalize.Y / 0.25;
-                zId = normalize.Z / 0.25;
-
-                int id = 0;
-                for (int x = 0; x < 4; x++) {
-                    int xValue = clamp(x, xId) * 16;
-                    for (int y = 0; y < 4; y++) {
-                        int yValue = clamp(y, yId) * 4;
-                        for (int z = 0; z < 4; z++) {
-                            int zValue = clamp(z, zId);
-                            maps[i][id++] = xValue + yValue + zValue;
-                        }
-                    }
-                }
             }
             //Console.WriteLine(mesh.Positions);
             //Console.WriteLine(coords);
-        }
-
-        private int clamp(int pos, double value) {
-            double result = 0;
-            switch(pos) {
-                case 0:
-                    result =  Math.Floor(value) - 1;
-                    break;
-                case 1:
-                    result = Math.Floor(value);
-                    break;
-                case 2:
-                    result = Math.Ceiling(value);
-                    break;
-                case 3:
-                    result = Math.Ceiling(value) + 1;
-                    break;
-            }
-
-            if (result > 3) {
-                return 3;
-            } else if (result < 0) {
-                return 0;
-            } else {
-                return (int)result;
-            }
-            
-        }
-
-        private int clamp2(int pos, double value) {
-            double result = 0;
-            switch (pos) {
-                case 0:
-                    result = Math.Floor(value) - 1;
-                    break;
-                case 1:
-                    result = Math.Floor(value);
-                    break;
-                case 2:
-                    result = Math.Ceiling(value);
-                    break;
-                case 3:
-                    result = Math.Ceiling(value) + 1;
-                    break;
-            }
-
-            return (int)result;
         }
 
         private void UpdateDeformation() {
