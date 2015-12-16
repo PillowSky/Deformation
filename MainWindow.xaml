@@ -19,11 +19,19 @@
                 <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
             </Grid.RowDefinitions>
             <Button Grid.Row="0" Content="Load" Click="Load_Click"/>
             <Button Grid.Row="1" Content="Deform" Click="Deform_Click"/>
         </Grid>
-        <Helix:HelixViewport3D Grid.Column="1">
+        <Helix:HelixViewport3D x:Name="Viewport" Grid.Column="1">
+            <Helix:HelixViewport3D.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0, 1">
+                    <GradientStop Color="#7e91a5" Offset="0"/>
+                    <GradientStop Color="#18191b" Offset="1"/>
+                </LinearGradientBrush>
+            </Helix:HelixViewport3D.Background>
             <Helix:HelixViewport3D.Camera>
                 <PerspectiveCamera Position="5,5,5" LookDirection="-5,-5,-5" UpDirection="0,0,1"/>
             </Helix:HelixViewport3D.Camera>
@@ -35,9 +43,12 @@
             <Tools:ScreenSpaceLines3D Points="0,-100,0 0,100,0" Color="Green"></Tools:ScreenSpaceLines3D>
             <Tools:ScreenSpaceLines3D Points="0,0,-100 0,0,100" Color="Blue"></Tools:ScreenSpaceLines3D>
 
-            <ContainerUIElement3D x:Name="container">
-                <Helix:Teapot Fill="White"></Helix:Teapot>
-            </ContainerUIElement3D>
+            <ModelVisual3D x:Name="Model">
+                <Helix:SphereVisual3D Fill="White"></Helix:SphereVisual3D>
+            </ModelVisual3D>
+
+            <ModelVisual3D x:Name="ControlPoints">
+            </ModelVisual3D>
         </Helix:HelixViewport3D>
 
     </Grid>
