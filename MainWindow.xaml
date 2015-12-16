@@ -8,6 +8,9 @@
         Title="Deformation" Height="640" Width="960">
     
     <Window.Resources>
+        <Color x:Key="SkyColor">#7e91a5</Color>
+        <Color x:Key="GroundColor">#18191b</Color>
+        
         <ObjectDataProvider x:Key="DisplayModeEnum" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
             <ObjectDataProvider.MethodParameters>
                 <x:Type TypeName="this:DisplayMode"/>
@@ -81,8 +84,8 @@
             <Helix:HelixViewport3D x:Name="Viewport" Grid.Row="0" Margin="5,0,0,0">
                 <Helix:HelixViewport3D.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0, 1">
-                        <GradientStop Color="#7e91a5" Offset="0"/>
-                        <GradientStop Color="#18191b" Offset="1"/>
+                        <GradientStop Color="{StaticResource SkyColor}" Offset="0"/>
+                        <GradientStop Color="{StaticResource GroundColor}" Offset="1"/>
                     </LinearGradientBrush>
                 </Helix:HelixViewport3D.Background>
                 <Helix:HelixViewport3D.Camera>

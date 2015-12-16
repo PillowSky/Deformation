@@ -1,17 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Media.Media3D;
 using Microsoft.Win32;
 using HelixToolkit.Wpf;
@@ -87,9 +78,6 @@ namespace Deformation {
 
         private MeshGeometry3D mesh;
         private Point3D[] coords;
-        private int xDim = 3;
-        private int yDim = 3;
-        private int zDim = 3;
 
         public MainWindow() {
             InitializeComponent();
@@ -104,12 +92,12 @@ namespace Deformation {
             ControlPoints.Children.Clear();
             Rect3D rect = Model.Children.FindBounds();
 
-            for (int x = 0; x <= xDim; x++) {
-                double xValue = rect.X + rect.SizeX * x / xDim;
-                for (int y = 0; y <= yDim; y++) {
-                    double yValue = rect.Y + rect.SizeY * y / yDim;
-                    for (int z = 0; z <= zDim; z++) {
-                        double zValue = rect.Z + rect.SizeZ * z / zDim;
+            for (int x = 0; x < XDivision; x++) {
+                double xValue = rect.X + rect.SizeX * x / (XDivision - 1);
+                for (int y = 0; y < YDivision; y++) {
+                    double yValue = rect.Y + rect.SizeY * y / (YDivision - 1);
+                    for (int z = 0; z < ZDivision; z++) {
+                        double zValue = rect.Z + rect.SizeZ * z / (ZDivision - 1);
                         PointsVisual3D p = new PointsVisual3D();
                         p.Size = 8;
                         p.Points.Add(new Point3D(xValue, yValue, zValue));
@@ -175,42 +163,8 @@ namespace Deformation {
             return translationVector3D;
         }
 
-        private void Open_Click(object sender, RoutedEventArgs e) {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.DefaultExt = ".obj";
-            dialog.Filter = "Wavefront file (*.obj)|*.obj|Lightwave file (*.lwo)|*.lwo|Object File Format file (*.off)|*.off|StereoLithography file (*.stl)|*.stl|3D Studio file (*.3ds)|*.3ds";
-
-            if (dialog.ShowDialog() == true) {
-                Model3D model = (new ModelImporter()).Load(dialog.FileName);
-                ModelVisual3D visual = new ModelVisual3D();
-                visual.Content = model;
-                Model.Children[0] = visual;
-                UpdateControlPoint();
-                InitializeDeformation();
-            }
-        }
-
-        private void Save_Click(object sender, RoutedEventArgs e) {
-
-        }
-
-        private void Play_Click(object sender, RoutedEventArgs e) {
-
-        }
-
-        private void Render_Click(object sender, RoutedEventArgs e) {
-
-        }
-
-        private void Reset_Click(object sender, RoutedEventArgs e) {
-
-        }
-
-        private void Help_Click(object sender, RoutedEventArgs e) {
-
-        }
-
         private void InitializeDeformation() {
+            var foo = (Model.Children[0] as ModelVisual3D).Content;
             mesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
             coords = new Point3D[mesh.Positions.Count];
 
@@ -220,8 +174,6 @@ namespace Deformation {
                 Point3D normalize = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
                 coords[i] = normalize;
             }
-            //Console.WriteLine(mesh.Positions);
-            //Console.WriteLine(coords);
         }
 
         private void UpdateDeformation() {
@@ -262,6 +214,50 @@ namespace Deformation {
                     break;
             }
             return result;
+        }
+
+        private void Open_Click(object sender, RoutedEventArgs e) {
+            OpenFileDialog dialog = new OpenFileDialog();
+            dialog.DefaultExt = Importers.DefaultExtension;
+            dialog.Filter = Importers.Filter;
+
+            if (dialog.ShowDialog() == true) {
+                Model3DGroup group = (new ModelImporter()).Load(dialog.FileName);
+                Model.Children.Clear();
+                foreach (Model3D m in group.Children) {
+                    ModelVisual3D v = new ModelVisual3D();
+                    v.Content = m;
+                    Model.Children.Add(v);
+                }
+                UpdateControlPoint();
+                InitializeDeformation();
+            }
+        }
+
+        private void Save_Click(object sender, RoutedEventArgs e) {
+            SaveFileDialog dialog = new SaveFileDialog();
+            dialog.DefaultExt = Exporters.DefaultExtension;
+            dialog.Filter = Exporters.Filter;
+
+            if (dialog.ShowDialog() == true) {
+
+            }
+        }
+
+        private void Play_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Render_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Reset_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Help_Click(object sender, RoutedEventArgs e) {
+
         }
     }
 }
