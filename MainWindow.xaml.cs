@@ -87,6 +87,9 @@ namespace Deformation {
             InitializeComponent();
             DataContext = this;
 
+            AppDomain currentDomain = AppDomain.CurrentDomain;
+            currentDomain.UnhandledException += new UnhandledExceptionEventHandler(ExceptionHandler);
+
             initializeDeformation();
             initializeInteraction();
         }
@@ -116,7 +119,7 @@ namespace Deformation {
                         controls[controlIndex++] = p;
 
                         PointsVisual3D v = new PointsVisual3D();
-                        v.Size = 4;
+                        v.Size = 5;
                         v.Points.Add(p);
                         ControlPoints.Children.Add(v);
                     }
@@ -231,7 +234,7 @@ namespace Deformation {
             (source as MainWindow).initializeDeformation();
         }
 
-        private void Open_Click(object sender, RoutedEventArgs e) {
+        private void Import_Click(object sender, RoutedEventArgs e) {
             OpenFileDialog dialog = new OpenFileDialog();
             dialog.DefaultExt = Importers.DefaultExtension;
             dialog.Filter = Importers.Filter;
@@ -239,7 +242,8 @@ namespace Deformation {
             if (dialog.ShowDialog() == true) {
                 ModelVisual3D visual = new ModelVisual3D();
                 GeometryModel3D model = new ModelImporter().Load(dialog.FileName).Children[0] as GeometryModel3D;
-                model.Material = new DiffuseMaterial(Brushes.White);
+                model.Material = FindResource("WhiteMaterial") as Material;
+
                 visual.Content = model;
                 Model.Children[0] = visual;
 
@@ -247,16 +251,21 @@ namespace Deformation {
             }
         }
 
-        private void Save_Click(object sender, RoutedEventArgs e) {
+        private void Export_Click(object sender, RoutedEventArgs e) {
             SaveFileDialog dialog = new SaveFileDialog();
             dialog.DefaultExt = Exporters.DefaultExtension;
             dialog.Filter = Exporters.Filter;
 
             if (dialog.ShowDialog() == true) {
                 using (FileStream writer = File.Create(dialog.FileName)) {
-                    //new ObjExporter().Export(Model, writer);
+                    IExporter exporter = Exporters.Create(dialog.FileName);
+                    if (exporter is BitmapExporter) {
+                        exporter.Export(Viewport.Viewport, writer);
+                    } else {
+                        exporter.Export(Model, writer);
+                    }
                 }
-                MessageBox.Show("SceneSaveText" + dialog.FileName, "SceneSaveTitle", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(FindResource("ModelExportText") as string + dialog.FileName, FindResource("ModelExportTitle") as string, MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -274,6 +283,11 @@ namespace Deformation {
 
         private void Help_Click(object sender, RoutedEventArgs e) {
 
+        }
+
+        static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args) {
+            Exception e = args.ExceptionObject as Exception;
+            MessageBox.Show(e.StackTrace, e.Message, MessageBoxButton.OK, MessageBoxImage.Stop);
         }
     }
 }

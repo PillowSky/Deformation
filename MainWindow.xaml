@@ -10,7 +10,10 @@
     <Window.Resources>
         <Color x:Key="SkyColor">#7e91a5</Color>
         <Color x:Key="GroundColor">#18191b</Color>
-        
+        <MaterialGroup x:Key="WhiteMaterial">
+            <DiffuseMaterial Brush="White"/>
+        </MaterialGroup>
+
         <ObjectDataProvider x:Key="DisplayModeEnum" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
             <ObjectDataProvider.MethodParameters>
                 <x:Type TypeName="this:DisplayMode"/>
@@ -56,8 +59,8 @@
                 <RowDefinition Height="1*"/>
                 <RowDefinition Height="1*"/>
             </Grid.RowDefinitions>
-            <Button Grid.Row="0" Content="Open" Click="Open_Click" Margin="0,0,0,2.5"/>
-            <Button Grid.Row="1" Content="Save" Click="Save_Click" Margin="0,2.5,0,0"/>
+            <Button Grid.Row="0" Content="Import" Click="Import_Click" Margin="0,0,0,2.5"/>
+            <Button Grid.Row="1" Content="Export" Click="Export_Click" Margin="0,2.5,0,0"/>
             <Label Grid.Row="2" Content="DisplayMode:" VerticalContentAlignment="Bottom"/>
             <ComboBox Grid.Row="3" VerticalContentAlignment="Center" ItemsSource="{Binding Source={StaticResource DisplayModeEnum}}" SelectedValue="{Binding DisplayStat}"/>
             <Label Grid.Row="4" Content="SurfaceMode:" VerticalContentAlignment="Bottom"/>
@@ -99,7 +102,7 @@
                 <Tools:ScreenSpaceLines3D Points="0,-100,0 0,100,0" Color="Green"></Tools:ScreenSpaceLines3D>
                 <Tools:ScreenSpaceLines3D Points="0,0,-100 0,0,100" Color="Blue"></Tools:ScreenSpaceLines3D>
                 <ModelVisual3D x:Name="Model">
-                    <Helix:SphereVisual3D Fill="White"></Helix:SphereVisual3D>
+                    <Helix:SphereVisual3D Material="{StaticResource WhiteMaterial}"></Helix:SphereVisual3D>
                 </ModelVisual3D>
                 <ModelVisual3D x:Name="ControlPoints">
                 </ModelVisual3D>
