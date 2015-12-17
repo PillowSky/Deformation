@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -35,6 +36,10 @@ namespace Deformation {
         public DependencyProperty TimeStatProperty = DependencyProperty.Register("TimeStat", typeof(TimeMode), typeof(MainWindow), new FrameworkPropertyMetadata(TimeMode.Linear));
         public DependencyProperty DurationProperty = DependencyProperty.Register("Duration", typeof(double), typeof(MainWindow), new FrameworkPropertyMetadata(1.0));
         public DependencyProperty ElapsedProperty = DependencyProperty.Register("Elapsed", typeof(double), typeof(MainWindow), new FrameworkPropertyMetadata(0.0));
+
+        private MeshGeometry3D mesh;
+        private Point3D[] coords;
+        private Point3D[] controls;
 
         public DisplayMode DisplayStat {
             get { return (DisplayMode)GetValue(DisplayStatProperty); }
@@ -76,66 +81,85 @@ namespace Deformation {
             set { SetValue(ElapsedProperty, value); }
         }
 
-        private MeshGeometry3D mesh;
-        private Point3D[] coords;
-
         public MainWindow() {
             InitializeComponent();
             DataContext = this;
 
-            UpdateControlPoint();
-            BindMouseToControlPoint();
-            InitializeDeformation();
+            initializeDeformation();
+            initializeInteraction();
         }
 
-        public void UpdateControlPoint() {
-            ControlPoints.Children.Clear();
-            Rect3D rect = Model.Children.FindBounds();
+        private void initializeDeformation() {
+            mesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
+            coords = new Point3D[mesh.Positions.Count];
 
+            Rect3D bound = Model.Children.FindBounds();
+            for (int i = 0; i < mesh.Positions.Count; i++) {
+                Vector3D diff = mesh.Positions[i] - bound.Location;
+                coords[i] = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
+            }
+
+            ControlPoints.Children.Clear();
+            controls = new Point3D[XDivision * YDivision * ZDivision];
+
+            int controlIndex = 0;
             for (int x = 0; x < XDivision; x++) {
-                double xValue = rect.X + rect.SizeX * x / (XDivision - 1);
+                double xCoord = bound.X + bound.SizeX * x / (XDivision - 1);
                 for (int y = 0; y < YDivision; y++) {
-                    double yValue = rect.Y + rect.SizeY * y / (YDivision - 1);
+                    double yCoord = bound.Y + bound.SizeY * y / (YDivision - 1);
                     for (int z = 0; z < ZDivision; z++) {
-                        double zValue = rect.Z + rect.SizeZ * z / (ZDivision - 1);
-                        PointsVisual3D p = new PointsVisual3D();
-                        p.Size = 8;
-                        p.Points.Add(new Point3D(xValue, yValue, zValue));
-                        p.SetName("ControlPoint");
-                        ControlPoints.Children.Add(p);
+                        double zCoord = bound.Z + bound.SizeZ * z / (ZDivision - 1);
+
+                        Point3D p = new Point3D(xCoord, yCoord, zCoord);
+                        controls[controlIndex++] = p;
+
+                        PointsVisual3D v = new PointsVisual3D();
+                        v.Size = 8;
+                        v.Points.Add(p);
+                        ControlPoints.Children.Add(v);
                     }
                 }
             }
         }
 
-        public void BindMouseToControlPoint() {
-            Point startPoint = new Point();
+        private void initializeInteraction() {
+            Point beginPoint = new Point();
+            Point3D beginPoint3D = new Point3D();
+            Matrix3D beginTransform = new Matrix3D();
+            Point endPoint = new Point();
+            Matrix3D endTransform = new Matrix3D();
             PointsVisual3D visualHit = null;
+            double distance = 1;
+            int indexHit = -1;
 
             Viewport.MouseLeftButtonDown += (sender, e) => {
-                startPoint = e.GetPosition(Viewport);
-                PointsVisual3D mayHit = VisualTreeHelper.HitTest(Viewport, startPoint).VisualHit as PointsVisual3D;
-                if (mayHit != null && mayHit.GetName() == "ControlPoint") {
-                    visualHit = mayHit;
+                beginPoint = e.GetPosition(Viewport);
+                RayMeshGeometry3DHitTestResult result = VisualTreeHelper.HitTest(Viewport, beginPoint) as RayMeshGeometry3DHitTestResult;
+
+                if (result != null) {
+                    visualHit = result.VisualHit as PointsVisual3D;
+                    if (visualHit != null) {
+                        indexHit = ControlPoints.Children.IndexOf(visualHit);
+                        ProjectionCamera camera = Viewport.Camera as ProjectionCamera;
+                        distance = Vector3D.DotProduct(result.PointHit - camera.Position, camera.LookDirection) / camera.LookDirection.Length;
+                        beginTransform = visualHit.Transform.Value;
+                        beginPoint3D = controls[indexHit];
+                    }
                 }
             };
 
             Viewport.MouseMove += (sender, e) => {
                 if (visualHit != null && e.LeftButton == MouseButtonState.Pressed) {
-                    Point endPoint = e.GetPosition(Viewport);
-                    Vector3D vector3D = GetTranslationVector3D(visualHit, startPoint, endPoint);
-                    Matrix3D matrix3D = visualHit.Transform.Value;
-                    vector3D += new Vector3D(matrix3D.OffsetX, matrix3D.OffsetY, matrix3D.OffsetZ);
+                    endPoint = e.GetPosition(Viewport);
 
-                    matrix3D.OffsetX = vector3D.X;
-                    matrix3D.OffsetY = vector3D.Y;
-                    matrix3D.OffsetZ = vector3D.Z;
-                    visualHit.Points[0] += new Vector3D(matrix3D.OffsetX, matrix3D.OffsetY, matrix3D.OffsetZ);
-                    //visualHit.Transform = new MatrixTransform3D(matrix3D);
-                    startPoint = endPoint;
-                    UpdateDeformation();
+                    endTransform = beginTransform;
+                    endTransform.Translate(distance * getTranslationVector3D(visualHit, beginPoint, endPoint));
+
+                    visualHit.Transform = new MatrixTransform3D(endTransform);
+                    controls[indexHit] = beginPoint3D + new Vector3D(endTransform.OffsetX, endTransform.OffsetY, endTransform.OffsetZ);
+                    
+                    updateDeformation();
                 };
-
             };
 
             Viewport.MouseLeftButtonUp += (sender, e) => {
@@ -144,9 +168,8 @@ namespace Deformation {
 
         }
 
-        private Vector3D GetTranslationVector3D(Visual3D modelHit, Point startPoint, Point endPoint) {
+        private Vector3D getTranslationVector3D(DependencyObject modelHit, Point beginPoint, Point endPoint) {
             Vector3D translationVector3D = new Vector3D();
-
             Viewport3DVisual viewport = null;
             bool success = false;
 
@@ -154,7 +177,7 @@ namespace Deformation {
 
             if (success && matrix3D.HasInverse) {
                 matrix3D.Invert();
-                Point3D startPoint3D = new Point3D(startPoint.X, startPoint.Y, 0);
+                Point3D startPoint3D = new Point3D(beginPoint.X, beginPoint.Y, 0);
                 Point3D endPoint3D = new Point3D(endPoint.X, endPoint.Y, 0);
                 Vector3D vector3D = endPoint3D - startPoint3D;
                 translationVector3D = matrix3D.Transform(vector3D);
@@ -163,32 +186,17 @@ namespace Deformation {
             return translationVector3D;
         }
 
-        private void InitializeDeformation() {
-            var foo = (Model.Children[0] as ModelVisual3D).Content;
-            mesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
-            coords = new Point3D[mesh.Positions.Count];
-
-            Rect3D bound = Model.Children.FindBounds();
-            for (int i = 0; i < mesh.Positions.Count; i++) {
-                Vector3D diff = mesh.Positions[i] - bound.Location;
-                Point3D normalize = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
-                coords[i] = normalize;
-            }
-        }
-
-        private void UpdateDeformation() {
+        private void updateDeformation() {
             for (int i = 0; i < mesh.Positions.Count; i++) {
                 Point3D coord = coords[i];
-                //int[] map = maps[i];
                 Point3D pos = new Point3D();
-                Point3D[] controls = ControlPoints.Children.Select(v => (v as PointsVisual3D).Points[0]).ToArray();
 
-                int id = 0;
-                for (int x = 0; x < 4; x++) {
-                    for (int y = 0; y < 4; y++) {
-                        for (int z = 0; z < 4; z++) {
+                int controlIndex = 0;
+                for (int x = 0; x < XDivision; x++) {
+                    for (int y = 0; y < YDivision; y++) {
+                        for (int z = 0; z < ZDivision; z++) {
                             double scale = getBoean(x, coord.X) * getBoean(y, coord.Y) * getBoean(z, coord.Z);
-                            Point3D p = controls[id++];
+                            Point3D p = controls[controlIndex++];
                             pos += new Vector3D(p.X * scale, p.Y * scale, p.Z * scale);
                         }
                     }
@@ -222,15 +230,10 @@ namespace Deformation {
             dialog.Filter = Importers.Filter;
 
             if (dialog.ShowDialog() == true) {
-                Model3DGroup group = (new ModelImporter()).Load(dialog.FileName);
-                Model.Children.Clear();
-                foreach (Model3D m in group.Children) {
-                    ModelVisual3D v = new ModelVisual3D();
-                    v.Content = m;
-                    Model.Children.Add(v);
-                }
-                UpdateControlPoint();
-                InitializeDeformation();
+                ModelVisual3D visual = new ModelVisual3D();
+                visual.Content = new ModelImporter().Load(dialog.FileName).Children[0];
+                Model.Children[0] = visual;
+                initializeDeformation();
             }
         }
 
@@ -240,7 +243,10 @@ namespace Deformation {
             dialog.Filter = Exporters.Filter;
 
             if (dialog.ShowDialog() == true) {
-
+                using (FileStream writer = File.Create(dialog.FileName)) {
+                    //new ObjExporter().Export(Model, writer);
+                }
+                MessageBox.Show("SceneSaveText" + dialog.FileName, "SceneSaveTitle", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
