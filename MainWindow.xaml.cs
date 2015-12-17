@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -40,6 +41,7 @@ namespace Deformation {
         private MeshGeometry3D mesh;
         private Point3D[] coords;
         private Point3D[] controls;
+        private Dictionary<int, int> factorialCache = new Dictionary<int, int>();
 
         public DisplayMode DisplayStat {
             get { return (DisplayMode)GetValue(DisplayStatProperty); }
@@ -114,7 +116,7 @@ namespace Deformation {
                         controls[controlIndex++] = p;
 
                         PointsVisual3D v = new PointsVisual3D();
-                        v.Size = 8;
+                        v.Size = 4;
                         v.Points.Add(p);
                         ControlPoints.Children.Add(v);
                     }
@@ -193,11 +195,13 @@ namespace Deformation {
 
                 int controlIndex = 0;
                 for (int x = 0; x < XDivision; x++) {
+                    double xWeight = calcBerstein(x, XDivision - 1, coord.X);
                     for (int y = 0; y < YDivision; y++) {
+                        double yWeight = calcBerstein(y, YDivision - 1, coord.Y);
                         for (int z = 0; z < ZDivision; z++) {
-                            double scale = getBoean(x, coord.X) * getBoean(y, coord.Y) * getBoean(z, coord.Z);
-                            Point3D p = controls[controlIndex++];
-                            pos += new Vector3D(p.X * scale, p.Y * scale, p.Z * scale);
+                            double zWeight = calcBerstein(z, ZDivision - 1, coord.Z);
+                            double weight = xWeight * yWeight * zWeight;
+                            pos += (Vector3D)controls[controlIndex++].Multiply(weight);
                         }
                     }
                 }
@@ -205,23 +209,22 @@ namespace Deformation {
             }
         }
 
-        private double getBoean(int i, double u) {
-            double result = 0;
-            switch (i) {
-                case 0:
-                    result = Math.Pow(1 - u, 3);
-                    break;
-                case 1:
-                    result = 3 * u * Math.Pow(1 - u, 2);
-                    break;
-                case 2:
-                    result = 3 * Math.Pow(u, 2) * (1 - u);
-                    break;
-                case 3:
-                    result = Math.Pow(u, 3);
-                    break;
+        private double calcBerstein(int i, int n, double u) {
+            return (calcFactorial(n) * Math.Pow(u, i) * Math.Pow(1 - u, n - i)) / (calcFactorial(i) * calcFactorial(n - i));
+        }
+
+        private int calcFactorial(int n) {
+            int factorial;
+            if (factorialCache.TryGetValue(n, out factorial)) {
+                // done
+            } else {
+                if (n <= 1) {
+                    factorial = factorialCache[n] = 1;
+                } else {
+                    factorial = factorialCache[n] = calcFactorial(n - 1) * n;
+                }
             }
-            return result;
+            return factorial;
         }
 
         private void Open_Click(object sender, RoutedEventArgs e) {
@@ -231,8 +234,11 @@ namespace Deformation {
 
             if (dialog.ShowDialog() == true) {
                 ModelVisual3D visual = new ModelVisual3D();
-                visual.Content = new ModelImporter().Load(dialog.FileName).Children[0];
+                GeometryModel3D model = new ModelImporter().Load(dialog.FileName).Children[0] as GeometryModel3D;
+                model.Material = new DiffuseMaterial(Brushes.White);
+                visual.Content = model;
                 Model.Children[0] = visual;
+
                 initializeDeformation();
             }
         }
