@@ -20,12 +20,6 @@
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
 
-        <ObjectDataProvider x:Key="SurfaceModeEnum" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
-            <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="this:SurfaceMode"/>
-            </ObjectDataProvider.MethodParameters>
-        </ObjectDataProvider>
-        
         <ObjectDataProvider x:Key="TimeModeEnum" MethodName="GetValues" ObjectType="{x:Type sys:Enum}">
             <ObjectDataProvider.MethodParameters>
                 <x:Type TypeName="this:TimeMode"/>
@@ -63,8 +57,8 @@
             <Button Grid.Row="1" Content="Export" Click="Export_Click" Margin="0,2.5,0,0"/>
             <Label Grid.Row="2" Content="DisplayMode:" VerticalContentAlignment="Bottom"/>
             <ComboBox Grid.Row="3" VerticalContentAlignment="Center" ItemsSource="{Binding Source={StaticResource DisplayModeEnum}}" SelectedValue="{Binding DisplayStat}"/>
-            <Label Grid.Row="4" Content="SurfaceMode:" VerticalContentAlignment="Bottom"/>
-            <ComboBox Grid.Row="5" VerticalContentAlignment="Center" ItemsSource="{Binding Source={StaticResource SurfaceModeEnum}}" SelectedValue="{Binding SurfaceStat}"/>
+            <Label Grid.Row="4" ContentStringFormat="Subdivision Level: {0}" VerticalContentAlignment="Bottom" Content="{Binding SubdivisionLevel}"/>
+            <Slider Grid.Row="5" Minimum="0" Maximum="2" SmallChange="1" Value="{Binding SubdivisionLevel}"/>
             <Label Grid.Row="6" VerticalContentAlignment="Bottom" ContentStringFormat="X Division: {0}" Content="{Binding XDivision}" />
             <Slider Grid.Row="7" Minimum="2" Maximum="8" SmallChange="1" Value="{Binding XDivision}"/>
             <Label Grid.Row="8" VerticalContentAlignment="Bottom" ContentStringFormat="Y Division: {0}" Content="{Binding YDivision}"/>
@@ -102,7 +96,7 @@
                 <Tools:ScreenSpaceLines3D Points="0,-100,0 0,100,0" Color="Green"></Tools:ScreenSpaceLines3D>
                 <Tools:ScreenSpaceLines3D Points="0,0,-100 0,0,100" Color="Blue"></Tools:ScreenSpaceLines3D>
                 <ModelVisual3D x:Name="Model">
-                    <Helix:SphereVisual3D Material="{StaticResource WhiteMaterial}"></Helix:SphereVisual3D>
+                    <Helix:SphereVisual3D Fill="White" Material="{StaticResource WhiteMaterial}"></Helix:SphereVisual3D>
                 </ModelVisual3D>
                 <ModelVisual3D x:Name="ControlPoints">
                 </ModelVisual3D>

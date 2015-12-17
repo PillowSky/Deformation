@@ -16,11 +16,6 @@ namespace Deformation {
         Model
     }
 
-    public enum SurfaceMode {
-        Plan,
-        Subdivide
-    }
-
     public enum TimeMode {
         Linear,
         Easein,
@@ -29,7 +24,7 @@ namespace Deformation {
 
     public partial class MainWindow : Window {
         public DependencyProperty DisplayStatProperty = DependencyProperty.Register("DisplayStat", typeof(DisplayMode), typeof(MainWindow), new FrameworkPropertyMetadata(DisplayMode.Control));
-        public DependencyProperty SurfaceStatProperty = DependencyProperty.Register("SurfaceStat", typeof(SurfaceMode), typeof(MainWindow), new FrameworkPropertyMetadata(SurfaceMode.Plan));
+        public DependencyProperty SubdivisionLevelProperty = DependencyProperty.Register("SubdivisionLevel", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(0, OnSubDivisionPropertyChanged));
         public DependencyProperty XDivisionProperty = DependencyProperty.Register("XDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
         public DependencyProperty YDivisionProperty = DependencyProperty.Register("YDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
         public DependencyProperty ZDivisionProperty = DependencyProperty.Register("ZDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
@@ -38,6 +33,8 @@ namespace Deformation {
         public DependencyProperty ElapsedProperty = DependencyProperty.Register("Elapsed", typeof(double), typeof(MainWindow), new FrameworkPropertyMetadata(0.0));
 
         private MeshGeometry3D mesh;
+        private MeshGeometry3D roughMesh;
+
         private Point3D[] coords;
         private Point3D[] controls;
         private Dictionary<int, int> factorialCache = new Dictionary<int, int>();
@@ -47,9 +44,9 @@ namespace Deformation {
             set { SetValue(DisplayStatProperty, value); }
         }
 
-        public SurfaceMode SurfaceStat {
-            get { return (SurfaceMode)GetValue(SurfaceStatProperty); }
-            set { SetValue(SurfaceStatProperty, value); }
+        public int SubdivisionLevel {
+            get { return (int)GetValue(SubdivisionLevelProperty); }
+            set { SetValue(SubdivisionLevelProperty, value); }
         }
 
         public int XDivision {
@@ -90,20 +87,18 @@ namespace Deformation {
             AppDomain currentDomain = AppDomain.CurrentDomain;
             currentDomain.UnhandledException += new UnhandledExceptionEventHandler(ExceptionHandler);
 
+            initializeSubdivision();
             initializeDeformation();
             initializeInteraction();
         }
 
+        private void initializeSubdivision() {
+            roughMesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
+            updateSubdivision();
+        }
+
         private void initializeDeformation() {
-            mesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
-            coords = new Point3D[mesh.Positions.Count];
-
             Rect3D bound = Model.Children.FindBounds();
-            for (int i = 0; i < mesh.Positions.Count; i++) {
-                Vector3D diff = mesh.Positions[i] - bound.Location;
-                coords[i] = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
-            }
-
             ControlPoints.Children.Clear();
             controls = new Point3D[XDivision * YDivision * ZDivision];
 
@@ -191,6 +186,20 @@ namespace Deformation {
             return translationVector3D;
         }
 
+        private void updateSubdivision() {
+            LoopSubdivision loop = new LoopSubdivision(roughMesh);
+            loop.Subdivide(SubdivisionLevel);
+            ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry = mesh = loop.ToMeshGeometry3D();
+
+            coords = new Point3D[mesh.Positions.Count];
+            Rect3D bound = Model.Children.FindBounds();
+            for (int i = 0; i < mesh.Positions.Count; i++) {
+                Vector3D diff = mesh.Positions[i] - bound.Location;
+                coords[i] = new Point3D(diff.X / bound.SizeX, diff.Y / bound.SizeY, diff.Z / bound.SizeZ);
+            }
+
+        }
+
         private void updateDeformation() {
             for (int i = 0; i < mesh.Positions.Count; i++) {
                 Point3D coord = coords[i];
@@ -230,6 +239,11 @@ namespace Deformation {
             return factorial;
         }
 
+        private static void OnSubDivisionPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
+            (source as MainWindow).updateSubdivision();
+            (source as MainWindow).updateDeformation();
+        }
+
         private static void OnDivisionPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
             (source as MainWindow).initializeDeformation();
         }
@@ -247,6 +261,7 @@ namespace Deformation {
                 visual.Content = model;
                 Model.Children[0] = visual;
 
+                initializeSubdivision();
                 initializeDeformation();
             }
         }
