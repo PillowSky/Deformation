@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -221,6 +222,17 @@ namespace Deformation {
             }
         }
 
+        private void updateControls(Rect3D src, Rect3D dst) {
+            Matrix3D diff = new Matrix3D();
+            diff.Scale(new Vector3D(dst.SizeX / src.SizeX, dst.SizeY / src.SizeY, dst.SizeZ / src.SizeZ));
+            diff.Translate((dst.Location + (Vector3D)dst.Size / 2) - (src.Location + (Vector3D)src.Size / 2));
+
+            controls = controls.Select(p => p * diff).ToArray();
+            foreach (Visual3D v in ControlPoints.Children) {
+                v.Transform = new MatrixTransform3D(v.Transform.Value * diff);
+            }
+        }
+
         private double calcBerstein(int i, int n, double u) {
             return (calcFactorial(n) * Math.Pow(u, i) * Math.Pow(1 - u, n - i)) / (calcFactorial(i) * calcFactorial(n - i));
         }
@@ -258,11 +270,13 @@ namespace Deformation {
                 GeometryModel3D model = new ModelImporter().Load(dialog.FileName).Children[0] as GeometryModel3D;
                 model.Material = FindResource("WhiteMaterial") as Material;
 
+                updateControls(Model.Children.FindBounds(), model.Bounds);
+
                 visual.Content = model;
                 Model.Children[0] = visual;
 
                 initializeSubdivision();
-                initializeDeformation();
+                updateDeformation();
             }
         }
 
