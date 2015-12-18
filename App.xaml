@@ -4,6 +4,10 @@
              xmlns:System="clr-namespace:System;assembly=mscorlib"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
+        <System:String x:Key="SceneSaveText">Scene has been saved to</System:String>
+        <System:String x:Key="SceneSaveTitle">Scene saved</System:String>
+        <System:String x:Key="SceneLoadText">Scene has been loaded from</System:String>
+        <System:String x:Key="SceneLoadTitle">Scene loaded</System:String>
         <System:String x:Key="ModelExportText">Model has been exported to</System:String>
         <System:String x:Key="ModelExportTitle">Model exported</System:String>
     </Application.Resources>

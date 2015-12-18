@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using System.Xml;
+using System.Xml.Serialization;
 using Microsoft.Win32;
 using HelixToolkit.Wpf;
 using _3DTools;
@@ -34,7 +36,7 @@ namespace Deformation {
         public DependencyProperty ElapsedProperty = DependencyProperty.Register("Elapsed", typeof(double), typeof(MainWindow), new FrameworkPropertyMetadata(0.0));
 
         private MeshGeometry3D mesh;
-        private MeshGeometry3D roughMesh;
+        private MeshGeometry3D srcMesh;
 
         private Point3D[] coords;
         private Point3D[] controls;
@@ -94,7 +96,7 @@ namespace Deformation {
         }
 
         private void initializeSubdivision() {
-            roughMesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
+            srcMesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
             updateSubdivision();
         }
 
@@ -188,7 +190,7 @@ namespace Deformation {
         }
 
         private void updateSubdivision() {
-            LoopSubdivision loop = new LoopSubdivision(roughMesh);
+            LoopSubdivision loop = new LoopSubdivision(srcMesh);
             loop.Subdivide(SubdivisionLevel);
             ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry = mesh = loop.ToMeshGeometry3D();
 
@@ -258,6 +260,64 @@ namespace Deformation {
 
         private static void OnDivisionPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
             (source as MainWindow).initializeDeformation();
+        }
+
+        private void Open_Click(object sender, RoutedEventArgs e) {
+            OpenFileDialog dialog = new OpenFileDialog();
+            dialog.DefaultExt = "xml";
+            dialog.Filter = "XML Files (*.xml)|*.xml";
+
+            if (dialog.ShowDialog() == true) {
+                using (FileStream reader = File.OpenRead(dialog.FileName)) {
+                    SceneArchive archive = (SceneArchive)(new XmlSerializer(typeof(SceneArchive))).Deserialize(reader);
+
+                    ModelVisual3D visual = new ModelVisual3D();
+                    GeometryModel3D model = new GeometryModel3D();
+                    model.Geometry = archive.Mesh;
+                    model.Material = FindResource("WhiteMaterial") as Material;
+
+                    visual.Content = model;
+                    Model.Children[0] = visual;
+
+                    srcMesh = archive.Mesh;
+                    controls = archive.Control;
+
+                    ControlPoints.Children.Clear();
+                    foreach (Point3D p in controls) {
+                        PointsVisual3D v = new PointsVisual3D();
+                        v.Size = 5;
+                        v.Points.Add(p);
+                        ControlPoints.Children.Add(v);
+                    }
+
+
+                    SubdivisionLevel = archive.SubDivisionLevel;
+                    XDivision = archive.XDivision;
+                    YDivision = archive.YDivision;
+                    ZDivision = archive.ZDivision;
+
+                    initializeSubdivision();
+                    updateDeformation();
+                }
+
+                MessageBox.Show(FindResource("SceneLoadText") as string + dialog.FileName, FindResource("SceneLoadTitle") as string, MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void Save_Click(object sender, RoutedEventArgs e) {
+            SaveFileDialog dialog = new SaveFileDialog();
+            dialog.DefaultExt = "xml";
+            dialog.Filter = "XML Files (*.xml)|*.xml";
+
+            if (dialog.ShowDialog() == true) {
+                SceneArchive archive = new SceneArchive(srcMesh, controls, SubdivisionLevel, XDivision, YDivision, ZDivision);
+
+                using (FileStream writer = File.Create(dialog.FileName)) {
+                    (new XmlSerializer(archive.GetType())).Serialize(writer, archive);
+                }
+
+                MessageBox.Show(FindResource("SceneSaveText") as string + dialog.FileName, FindResource("SceneSaveTitle") as string, MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         private void Import_Click(object sender, RoutedEventArgs e) {
