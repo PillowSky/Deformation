@@ -36,6 +36,7 @@ namespace Deformation {
     public partial class MainWindow : Window {
         public DependencyProperty CameraStatProperty = DependencyProperty.Register("CameraStat", typeof(CameraMode), typeof(MainWindow), new FrameworkPropertyMetadata(CameraMode.Perspective, OnCameraStatPropertyChanged));
         public DependencyProperty DisplayStatProperty = DependencyProperty.Register("DisplayStat", typeof(DisplayMode), typeof(MainWindow), new FrameworkPropertyMetadata(DisplayMode.Rendered, OnDisplayStatPropertyChanged));
+        public DependencyProperty EditStatProperty = DependencyProperty.Register("EditStat", typeof(EditMode), typeof(MainWindow), new FrameworkPropertyMetadata(EditMode.Show, OnEditStatPropertyChanged));
         public DependencyProperty SubdivisionLevelProperty = DependencyProperty.Register("SubdivisionLevel", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(0, OnSubDivisionPropertyChanged));
         public DependencyProperty XDivisionProperty = DependencyProperty.Register("XDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
         public DependencyProperty YDivisionProperty = DependencyProperty.Register("YDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
@@ -59,6 +60,11 @@ namespace Deformation {
         public DisplayMode DisplayStat {
             get { return (DisplayMode)GetValue(DisplayStatProperty); }
             set { SetValue(DisplayStatProperty, value); }
+        }
+
+        public EditMode EditStat {
+            get { return (EditMode)GetValue(EditStatProperty); }
+            set { SetValue(EditStatProperty, value); }
         }
 
         public int SubdivisionLevel {
@@ -146,6 +152,15 @@ namespace Deformation {
                         v.Points.Add(p);
                         ControlPoints.Children.Add(v);
                     }
+                }
+            }
+
+            if (EditStat == EditMode.Show) {
+                ModelVisual3D visual = generateCage();
+                if (Model.Children.Count != 1) {
+                    Model.Children[1] = visual;
+                } else {
+                    Model.Children.Add(visual);
                 }
             }
         }
@@ -251,6 +266,15 @@ namespace Deformation {
             if (DisplayStat == DisplayMode.Wireframe) {
                     Model.Children[0] = generateWireframe(mesh);
             }
+
+            if (EditStat == EditMode.Show) {
+                ModelVisual3D visual = generateCage();
+                if (Model.Children.Count != 1) {
+                    Model.Children[1] = visual;
+                } else {
+                    Model.Children.Add(visual);
+                }
+            }
         }
 
         private void updateControls(Rect3D src, Rect3D dst) {
@@ -317,6 +341,28 @@ namespace Deformation {
                     break;
                 case DisplayMode.Wireframe:
                     window.Model.Children[0] = generateWireframe(window.mesh);
+                    break;
+            }
+        }
+
+        private static void OnEditStatPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
+            MainWindow window = source as MainWindow;
+
+            switch ((EditMode)e.NewValue) {
+                case EditMode.Show:
+                    ModelVisual3D visual = window.generateCage();
+                    if (window.Model.Children.Count != 1) {
+                        window.Model.Children[1] = visual;
+                    } else {
+                        window.Model.Children.Add(visual);
+                    }
+                    window.Grid.Visible = true;
+                    break;
+                case EditMode.Hide:
+                    if (window.Model.Children.Count != 1) {
+                        window.Model.Children.RemoveAt(1);
+                    }
+                    window.Grid.Visible = false;
                     break;
             }
         }
@@ -454,19 +500,83 @@ namespace Deformation {
 
         private static Point3D[] generateBezierCurve(Point3D[] knots, int n) {
             int level = knots.Length - 1;
-            int samples = level * n;
-            Point3D[] smooth = new Point3D[samples];
+            int samples = knots.Length * n;
+            Point3D[] smooth = new Point3D[samples + 1];
 
             for (int i = 0; i < samples; i++) {
-                double u = (double)i / n;
+                double u = (double)i / samples;
                 Point3D pos = new Point3D();
                 for (int k = 0; k < knots.Length; k++) {
                     pos += (Vector3D)knots[k].Multiply(calcBerstein(k, level, u));
                 }
                 smooth[i] = pos;
             }
+            smooth[samples] = knots[knots.Length - 1];
 
             return smooth;
+        }
+
+        private ModelVisual3D generateCage() {
+            ModelVisual3D visual = new ModelVisual3D();
+            
+            for (int x = 0; x < XDivision; x++) {
+                int xIndex = x * YDivision * ZDivision;
+                for (int y = 0; y < YDivision; y++) {
+                    int yIndex = y * ZDivision;
+                    Point3D[] knots = new Point3D[ZDivision];
+                    for (int z = 0; z < ZDivision; z++) {
+                        int index = xIndex + yIndex + z;
+                        knots[z] = controls[index];
+                    }
+                    Point3D[] curve = generateBezierCurve(knots, 20);
+                    LinesVisual3D polyline = new LinesVisual3D();
+                    for (int i = 1; i < curve.Length; i++) {
+                        polyline.Points.Add(curve[i - 1]);
+                        polyline.Points.Add(curve[i]);
+                    }
+                    visual.Children.Add(polyline);
+                }
+            }
+
+            for (int y = 0; y < YDivision; y++) {
+                int yIndex = y * ZDivision;
+                for (int z = 0; z < ZDivision; z++) {
+                    Point3D[] knots = new Point3D[XDivision];
+                    for (int x = 0; x < XDivision; x++) {
+                        int xIndex = x * YDivision * ZDivision;
+                        int index = xIndex + yIndex + z;
+                        knots[x] = controls[index];
+                    }
+                    Point3D[] curve = generateBezierCurve(knots, 20);
+                    LinesVisual3D polyline = new LinesVisual3D();
+                    for (int i = 1; i < curve.Length; i++) {
+                        polyline.Points.Add(curve[i - 1]);
+                        polyline.Points.Add(curve[i]);
+                    }
+                    visual.Children.Add(polyline);
+                }
+            }
+
+            for (int z = 0; z < ZDivision; z++) {
+                for (int x = 0; x < XDivision; x++) {
+                    int xIndex = x * YDivision * ZDivision;
+                    Point3D[] knots = new Point3D[YDivision];
+                    for (int y = 0; y < YDivision; y++) {
+                        int yIndex = y * ZDivision;
+                        int index = xIndex + yIndex + z;
+                        knots[y] = controls[index];
+                    }
+                    Point3D[] curve = generateBezierCurve(knots, 20);
+                    LinesVisual3D polyline = new LinesVisual3D();
+                    for (int i = 1; i < curve.Length; i++) {
+                        polyline.Points.Add(curve[i - 1]);
+                        polyline.Points.Add(curve[i]);
+                    }
+                    visual.Children.Add(polyline);
+                }
+            }
+
+            return visual;
         }
 
         static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args) {
