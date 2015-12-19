@@ -115,9 +115,10 @@
 
                 <Helix:DefaultLights></Helix:DefaultLights>
                 <Helix:GridLinesVisual3D x:Name="Grid"></Helix:GridLinesVisual3D>
-                <Tools:ScreenSpaceLines3D x:Name="XLine" Points="-100,0,0 100,0,0" Color="Red"></Tools:ScreenSpaceLines3D>
-                <Tools:ScreenSpaceLines3D x:Name="YLine" Points="0,-100,0 0,100,0" Color="Green"></Tools:ScreenSpaceLines3D>
-                <Tools:ScreenSpaceLines3D x:Name="ZLine" Points="0,0,-100 0,0,100" Color="Blue"></Tools:ScreenSpaceLines3D>
+                <Tools:ScreenSpaceLines3D x:Name="XAxis" Points="-100,0,0 100,0,0" Color="Red"></Tools:ScreenSpaceLines3D>
+                <Tools:ScreenSpaceLines3D x:Name="YAxis" Points="0,-100,0 0,100,0" Color="Green"></Tools:ScreenSpaceLines3D>
+                <Tools:ScreenSpaceLines3D x:Name="ZAxis" Points="0,0,-100 0,0,100" Color="Blue"></Tools:ScreenSpaceLines3D>
+
                 <ModelVisual3D x:Name="Model">
                     <Helix:SphereVisual3D Fill="White" Material="{StaticResource WhiteMaterial}"></Helix:SphereVisual3D>
                 </ModelVisual3D>

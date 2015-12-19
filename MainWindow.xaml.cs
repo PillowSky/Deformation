@@ -357,12 +357,28 @@ namespace Deformation {
                         window.Model.Children.Add(visual);
                     }
                     window.Grid.Visible = true;
+                    foreach (Point3D p in window.controls) {
+                        PointsVisual3D v = new PointsVisual3D();
+                        v.Size = 5;
+                        v.Points.Add(p);
+                        window.ControlPoints.Children.Add(v);
+                    }
+                    window.XAxis.Points.Add(new Point3D(-100, 0, 0));
+                    window.XAxis.Points.Add(new Point3D(100,0,0));
+                    window.YAxis.Points.Add(new Point3D(0, -100, 0));
+                    window.YAxis.Points.Add(new Point3D(0, 100, 0));
+                    window.ZAxis.Points.Add(new Point3D(0, 0, -100));
+                    window.ZAxis.Points.Add(new Point3D(0, 0, 100));
                     break;
                 case EditMode.Hide:
                     if (window.Model.Children.Count != 1) {
                         window.Model.Children.RemoveAt(1);
                     }
                     window.Grid.Visible = false;
+                    window.ControlPoints.Children.Clear();
+                    window.XAxis.Points.Clear();
+                    window.YAxis.Points.Clear();
+                    window.ZAxis.Points.Clear();
                     break;
             }
         }
