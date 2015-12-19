@@ -104,7 +104,6 @@
                 </Helix:HelixViewport3D.Camera>
 
                 <Helix:DefaultLights></Helix:DefaultLights>
-                <Helix:CoordinateSystemVisual3D></Helix:CoordinateSystemVisual3D>
                 <Helix:GridLinesVisual3D></Helix:GridLinesVisual3D>
                 <Tools:ScreenSpaceLines3D Points="-100,0,0 100,0,0" Color="Red"></Tools:ScreenSpaceLines3D>
                 <Tools:ScreenSpaceLines3D Points="0,-100,0 0,100,0" Color="Green"></Tools:ScreenSpaceLines3D>

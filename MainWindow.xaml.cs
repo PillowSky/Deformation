@@ -18,9 +18,13 @@ namespace Deformation {
     }
 
     public enum DisplayMode {
-        Control,
-        Point,
-        Model
+        Rendered,
+        Wireframe
+    }
+
+    public enum EditMode {
+        Show,
+        Hide
     }
 
     public enum TimeMode {
@@ -30,8 +34,8 @@ namespace Deformation {
     }
 
     public partial class MainWindow : Window {
-        public DependencyProperty CameraStatProperty = DependencyProperty.Register("CameraStat", typeof(CameraMode), typeof(MainWindow), new FrameworkPropertyMetadata(CameraMode.Perspective, OnCameraModePropertyChanged));
-        public DependencyProperty DisplayStatProperty = DependencyProperty.Register("DisplayStat", typeof(DisplayMode), typeof(MainWindow), new FrameworkPropertyMetadata(DisplayMode.Control));
+        public DependencyProperty CameraStatProperty = DependencyProperty.Register("CameraStat", typeof(CameraMode), typeof(MainWindow), new FrameworkPropertyMetadata(CameraMode.Perspective, OnCameraStatPropertyChanged));
+        public DependencyProperty DisplayStatProperty = DependencyProperty.Register("DisplayStat", typeof(DisplayMode), typeof(MainWindow), new FrameworkPropertyMetadata(DisplayMode.Rendered, OnDisplayStatPropertyChanged));
         public DependencyProperty SubdivisionLevelProperty = DependencyProperty.Register("SubdivisionLevel", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(0, OnSubDivisionPropertyChanged));
         public DependencyProperty XDivisionProperty = DependencyProperty.Register("XDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
         public DependencyProperty YDivisionProperty = DependencyProperty.Register("YDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
@@ -45,7 +49,7 @@ namespace Deformation {
 
         private Point3D[] coords;
         private Point3D[] controls;
-        private Dictionary<int, int> factorialCache = new Dictionary<int, int>();
+        static private Dictionary<int, int> factorialCache = new Dictionary<int, int>();
 
         public CameraMode CameraStat {
             get { return (CameraMode)GetValue(CameraStatProperty); }
@@ -106,8 +110,19 @@ namespace Deformation {
         }
 
         private void initializeSubdivision() {
-            srcMesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
-            updateSubdivision();
+            if (srcMesh == null) {
+                srcMesh = ((Model.Children[0] as ModelVisual3D).Content as GeometryModel3D).Geometry as MeshGeometry3D;
+            } else {
+                ModelVisual3D visual = new ModelVisual3D();
+                GeometryModel3D model = new GeometryModel3D();
+                model.Geometry = srcMesh;
+                model.Material = FindResource("WhiteMaterial") as Material;
+
+                visual.Content = model;
+                Model.Children[0] = visual;
+            }
+            
+            updateSubdivision();            
         }
 
         private void initializeDeformation() {
@@ -232,6 +247,10 @@ namespace Deformation {
                 }
                 mesh.Positions[i] = pos;
             }
+
+            if (DisplayStat == DisplayMode.Wireframe) {
+                    Model.Children[0] = generateWireframe(mesh);
+            }
         }
 
         private void updateControls(Rect3D src, Rect3D dst) {
@@ -245,11 +264,11 @@ namespace Deformation {
             }
         }
 
-        private double calcBerstein(int i, int n, double u) {
+        private static double calcBerstein(int i, int n, double u) {
             return (calcFactorial(n) * Math.Pow(u, i) * Math.Pow(1 - u, n - i)) / (calcFactorial(i) * calcFactorial(n - i));
         }
 
-        private int calcFactorial(int n) {
+        private static int calcFactorial(int n) {
             int factorial;
             if (factorialCache.TryGetValue(n, out factorial)) {
                 // done
@@ -263,7 +282,7 @@ namespace Deformation {
             return factorial;
         }
 
-        private static void OnCameraModePropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
+        private static void OnCameraStatPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
             MainWindow window = source as MainWindow;
             ProjectionCamera camera = null;
 
@@ -280,6 +299,26 @@ namespace Deformation {
             camera.LookDirection = window.Viewport.Camera.LookDirection;
             camera.UpDirection = window.Viewport.Camera.UpDirection;
             window.Viewport.Camera = camera;
+        }
+
+        private static void OnDisplayStatPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
+            MainWindow window = source as MainWindow;
+
+            switch ((DisplayMode)e.NewValue) {
+                case DisplayMode.Rendered:
+                    ModelVisual3D visual = new ModelVisual3D();
+                    MeshGeometry3D mesh = window.mesh;
+                    GeometryModel3D model = new GeometryModel3D();
+                    model.Geometry = mesh;
+                    model.Material = window.FindResource("WhiteMaterial") as Material;
+
+                    visual.Content = model;
+                    window.Model.Children[0] = visual;
+                    break;
+                case DisplayMode.Wireframe:
+                    window.Model.Children[0] = generateWireframe(window.mesh);
+                    break;
+            }
         }
 
         private static void OnSubDivisionPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
@@ -354,14 +393,10 @@ namespace Deformation {
             dialog.Filter = Importers.Filter;
 
             if (dialog.ShowDialog() == true) {
-                ModelVisual3D visual = new ModelVisual3D();
                 GeometryModel3D model = new ModelImporter().Load(dialog.FileName).Children[0] as GeometryModel3D;
-                model.Material = FindResource("WhiteMaterial") as Material;
+                srcMesh = model.Geometry as MeshGeometry3D;
 
                 updateControls(Model.Children.FindBounds(), model.Bounds);
-
-                visual.Content = model;
-                Model.Children[0] = visual;
 
                 initializeSubdivision();
                 updateDeformation();
@@ -402,7 +437,22 @@ namespace Deformation {
 
         }
 
-        private Point3D[] generateBezierCurve(Point3D[] knots, int n) {
+        private static ModelVisual3D generateWireframe(MeshGeometry3D mesh) {
+            ModelVisual3D visual = new ModelVisual3D();
+            for (int i = 0; i < mesh.TriangleIndices.Count; i += 3) {
+                LinesVisual3D t = new LinesVisual3D();
+                t.Points.Add(mesh.Positions[mesh.TriangleIndices[i]]);
+                t.Points.Add(mesh.Positions[mesh.TriangleIndices[i + 1]]);
+                t.Points.Add(mesh.Positions[mesh.TriangleIndices[i + 1]]);
+                t.Points.Add(mesh.Positions[mesh.TriangleIndices[i + 2]]);
+                t.Points.Add(mesh.Positions[mesh.TriangleIndices[i + 2]]);
+                t.Points.Add(mesh.Positions[mesh.TriangleIndices[i]]);
+                visual.Children.Add(t);
+            }
+            return visual;
+        }
+
+        private static Point3D[] generateBezierCurve(Point3D[] knots, int n) {
             int level = knots.Length - 1;
             int samples = level * n;
             Point3D[] smooth = new Point3D[samples];
