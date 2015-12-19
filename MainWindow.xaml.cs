@@ -6,13 +6,17 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
-using System.Xml;
 using System.Xml.Serialization;
 using Microsoft.Win32;
 using HelixToolkit.Wpf;
 using _3DTools;
 
 namespace Deformation {
+    public enum CameraMode {
+        Perspective,
+        Orthographic
+    }
+
     public enum DisplayMode {
         Control,
         Point,
@@ -26,6 +30,7 @@ namespace Deformation {
     }
 
     public partial class MainWindow : Window {
+        public DependencyProperty CameraStatProperty = DependencyProperty.Register("CameraStat", typeof(CameraMode), typeof(MainWindow), new FrameworkPropertyMetadata(CameraMode.Perspective, OnCameraModePropertyChanged));
         public DependencyProperty DisplayStatProperty = DependencyProperty.Register("DisplayStat", typeof(DisplayMode), typeof(MainWindow), new FrameworkPropertyMetadata(DisplayMode.Control));
         public DependencyProperty SubdivisionLevelProperty = DependencyProperty.Register("SubdivisionLevel", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(0, OnSubDivisionPropertyChanged));
         public DependencyProperty XDivisionProperty = DependencyProperty.Register("XDivision", typeof(int), typeof(MainWindow), new FrameworkPropertyMetadata(4, OnDivisionPropertyChanged));
@@ -41,6 +46,11 @@ namespace Deformation {
         private Point3D[] coords;
         private Point3D[] controls;
         private Dictionary<int, int> factorialCache = new Dictionary<int, int>();
+
+        public CameraMode CameraStat {
+            get { return (CameraMode)GetValue(CameraStatProperty); }
+            set { SetValue(CameraStatProperty, value); }
+        }
 
         public DisplayMode DisplayStat {
             get { return (DisplayMode)GetValue(DisplayStatProperty); }
@@ -253,6 +263,25 @@ namespace Deformation {
             return factorial;
         }
 
+        private static void OnCameraModePropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
+            MainWindow window = source as MainWindow;
+            ProjectionCamera camera = null;
+
+            switch ((CameraMode)e.NewValue) {
+                case CameraMode.Perspective:
+                        camera = new PerspectiveCamera();
+                        break;
+                case CameraMode.Orthographic:
+                        camera = new OrthographicCamera();
+                        break;
+            }
+
+            camera.Position = window.Viewport.Camera.Position;
+            camera.LookDirection = window.Viewport.Camera.LookDirection;
+            camera.UpDirection = window.Viewport.Camera.UpDirection;
+            window.Viewport.Camera = camera;
+        }
+
         private static void OnSubDivisionPropertyChanged(DependencyObject source, DependencyPropertyChangedEventArgs e) {
             (source as MainWindow).updateSubdivision();
             (source as MainWindow).updateDeformation();
@@ -289,7 +318,6 @@ namespace Deformation {
                         v.Points.Add(p);
                         ControlPoints.Children.Add(v);
                     }
-
 
                     SubdivisionLevel = archive.SubDivisionLevel;
                     XDivision = archive.XDivision;
@@ -372,6 +400,23 @@ namespace Deformation {
 
         private void Help_Click(object sender, RoutedEventArgs e) {
 
+        }
+
+        private Point3D[] generateBezierCurve(Point3D[] knots, int n) {
+            int level = knots.Length - 1;
+            int samples = level * n;
+            Point3D[] smooth = new Point3D[samples];
+
+            for (int i = 0; i < samples; i++) {
+                double u = (double)i / n;
+                Point3D pos = new Point3D();
+                for (int k = 0; k < knots.Length; k++) {
+                    pos += (Vector3D)knots[k].Multiply(calcBerstein(k, level, u));
+                }
+                smooth[i] = pos;
+            }
+
+            return smooth;
         }
 
         static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args) {
